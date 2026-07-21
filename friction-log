@@ -1,3 +1,0 @@
-Gemini free tier gave immediate limit: 0 quota errors on gemini-2.0-flash with a brand new API key. No clear guidance in the error about whether this is a model availability issue, a billing issue, or a provisioning delay. A developer hitting this cold would have no idea whether to wait, switch models, or add a credit card. Switched to Groq as a workaround — worked immediately with no configuration issues.
-
-Dataset creation via SDK was straightforward, but there's no immediate feedback in the UI that examples were added successfully until you navigate to the dataset manually. A loading state or success confirmation in the UI would help new users confirm their SDK calls worked.
