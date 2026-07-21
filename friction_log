@@ -3,3 +3,12 @@ Gemini free tier gave immediate limit: 0 quota errors on gemini-2.0-flash with a
 Dataset creation via SDK was straightforward, but there's no immediate feedback in the UI that examples were added successfully until you navigate to the dataset manually. A loading state or success confirmation in the UI would help new users confirm their SDK calls worked.
 
 The Playground API key dialog is confusing. The layout shows what appears to be the key value at the top, then an unlabeled input field below it that turns out to be for the key name, not the key value itself. Spent several minutes trying to figure out why Start wouldn't run. The actual key input field isn't clearly labeled or visually distinct from the name field.
+
+The Playground defaults to OpenAI with no indication that other providers are available. A new user without an OpenAI key hits a wall immediately and may not realize Groq, Anthropic, or other providers are an option — the provider selector is buried inside the model dropdown.
+
+The generic support bot generates placeholder contact information ("support@
+[companydomain].com", "1-800-[support-phone-number]") when asked how to contact support. No error, no caveat — just fabricated placeholders presented as real information. A new user deploying this for a real product would need either a detailed system prompt with company-specific information or RAG pulling from real documentation. This isn't obvious from the getting started docs.
+
+LangGraph's StateGraph requires defining a TypedDict for state before building the graph — this isn't immediately obvious from a first read of the docs. A new user expecting something closer to a simple function chain may be confused by why state needs to be explicitly typed and passed between nodes.
+
+The distinction between "Run in Playground", "Run in LangSmith Studio", and "Run in SDK" under the + Experiment button isn't clearly explained. It's not obvious what LangSmith Studio is or how it differs from Playground for a first-time user.
