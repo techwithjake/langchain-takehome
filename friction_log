@@ -11,6 +11,9 @@ The layout shows what looks like the key value at the top, then an unlabeled fie
 **Playground defaults to OpenAI with no visible alternative**
 A new user without an OpenAI key hits a wall immediately. The provider selector (Groq, Anthropic, etc.) is buried inside the model dropdown, so it's easy to miss that other providers are even an option.
 
+**Groq free tier has a 100k token/day limit on llama-3.3-70b-versatile**
+Running 18 questions × 3 repetitions × 3 evaluators = 162 judge calls exhausted the daily token limit mid-run. Evaluation completed but most scores were null. Thelimit resets daily at midnight UTC. For larger evaluation runs on the free tier, either reduce repetitions, reduce the number of evaluators, or use a smaller judge model. There is no per-minute rate limit workaround for a daily token cap.
+
 ## Documentation Gaps
 
 **LangGraph's TypedDict requirement isn't obvious**
@@ -41,6 +44,9 @@ v2 was labeled as the improved-prompt run but actually executed the original v1 
 **Rubric changes should be versioned, not swapped in silently**
 Moving from a 3-band to a 5-band factuality rubric caused the average factuality score to drop from 0.92 (v3) to 0.67 (v4), not because the agent got worse but because the judge now had intermediate options to use — answers previously passing at 1.0 were re-scored at 0.5 under more scrutiny. This is expected behavior but could alarm a new user who assumes the agent regressed; rubric changes should be tracked as their own versioning event, distinct from prompt or model changes, so score drops aren't misread as regressions.
 
+**Module-level LLM initialization fails before environment variables load**
+Initializing `ChatGroq()` at the top level of a shared module causes an immediate `GroqError` on import — the API key hasn't been loaded from `.env` yet. Moving initialization inside the function that uses it (`generate_answer`) resolves the issue cleanly. Easy mistake to make when refactoring to a shared module pattern, and not obvious from the error message alone — worth watching for if import order between `load_dotenv()` and client construction ever gets rearranged.
+
 ## Evaluation Findings
 
 **Same-model-family judges can miss hallucinations entirely**
@@ -60,3 +66,6 @@ Running the same experiment twice with the same agent and same questions produce
 
 **A binary/sparse rubric anchors the judge to a narrow set of values**
 With only three scoring bands described (0.0, 0.5, 1.0), the judge almost exclusively returned those three values across v1–v3, making it impossible to detect meaningful improvement between experiments. Expanding to five bands (0.0, 0.25, 0.5, 0.75, 1.0) in v4 immediately produced more granular scores — 0.75 appeared across multiple questions — and revealed the judge scoring more critically on factuality overall. Rubric granularity has a direct and significant effect on evaluation signal quality.
+
+**Single-run scores aren't reliable enough to act on**
+Adding `num_repetitions=3` to the `evaluate()` call immediately revealed how misleading single-run scores can be. Reset-password helpfulness varied [0.75, 1.0, 1.0] across three runs — a single run could have caught either value with no way to know which was representative. Contact-support factuality went [0.5, 1.0, 0.5] — three runs, three different impressions of the same answer. Averaging also surfaced a genuine signal: cancel-subscription scored exactly 0.5 on helpfulness across all three runs with zero variance — a real, consistent problem rather than noise. `num_repetitions=3` should be the default for any evaluation run whose results will inform a decision.

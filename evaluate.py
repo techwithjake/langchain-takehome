@@ -105,16 +105,49 @@ Respond with ONLY a number between 0 and 1. Nothing else."""
     return {"key": "factuality", "score": score}
     # Logged as a separate "factuality" metric in LangSmith, alongside "helpfulness"
 
+def conciseness_evaluator(inputs: dict, outputs: dict, reference_outputs: dict) -> dict:
+    # Third evaluator: grades whether the response is appropriately concise
+    # or overwhelming the customer with unnecessary length
+    prompt = f"""You are evaluating whether a customer support response is appropriately concise.
+
+Question: {inputs["question"]}
+Response: {outputs["answer"]}
+
+A good customer support response gets to the point quickly without unnecessary preamble,
+repetition, or over-explanation. It should be as long as needed and no longer.
+
+Score from 0 to 1:
+- 1.0: Perfectly concise — clear, direct, no unnecessary content
+- 0.75: Mostly concise — minor unnecessary content but doesn't obscure the answer
+- 0.5: Somewhat verbose — answer is present but buried in unnecessary content
+- 0.25: Very verbose — excessive length makes the response hard to follow
+- 0.0: Completely inappropriate length — either far too long or too short to be useful
+
+Respond with ONLY a number between 0 and 1. Nothing else."""
+
+    response = judge.invoke(prompt)
+
+    try:
+        raw = response.content.strip()
+        cleaned = raw.split(":")[-1].split("/")[0].strip()
+        score = float(cleaned)
+        score = max(0.0, min(1.0, score))
+    except ValueError:
+        print(f"Warning: Could not parse conciseness score from: '{response.content}' — defaulting to 0.5")
+        score = 0.5
+
+    return {"key": "conciseness", "score": score}
+
 # Run the evaluation against the dataset
 results = evaluate(
     run_agent,
     data="Customer Support QA",
-    evaluators=[helpfulness_evaluator, factuality_evaluator],
+    evaluators=[helpfulness_evaluator, factuality_evaluator, conciseness_evaluator],
     num_repetitions=3,
     # Run each example 3 times and average the scores — addresses the judge-score variance found
     # earlier, where identical runs on an unchanged agent produced meaningfully different scores.
     # A single run isn't reliable in isolation; repetitions give a more trustworthy signal.
-    experiment_prefix="support-bot-v6-shared-module"
+    experiment_prefix="support-bot-v8-conciseness"
     # Label documents *why* this run differs from prior ones (shared module + repetitions + 5-band
     # rubric), not just a version bump — makes the experiment list in LangSmith self-explanatory later
 )
