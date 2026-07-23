@@ -22,10 +22,21 @@ These three options live under the "+ Experiment" button with no clear explanati
 **No guidance on avoiding placeholder hallucinations**
 The generic support bot fabricates contact info (`support@[companydomain].com`, `1-800-[support-phone-number]`) with no error or caveat — just placeholders presented as real. A user deploying this for a real product would need either a detailed, company-specific system prompt or RAG pulled from real documentation, and this isn't obvious from the getting-started docs.
 
+**"Repetitions" feature isn't surfaced where it's needed**
+LangSmith UI has a "Repetitions" feature for running an experiment multiple times and averaging scores, but it isn't highlighted in the getting-started evaluation docs — even though single-run judge scores can vary meaningfully run to run.
+
 ## Dataset / SDK Feedback Gaps
 
 **No UI confirmation after adding examples via SDK**
 Dataset creation via SDK works fine, but there's no immediate feedback that examples were added successfully until you manually navigate to the dataset. A loading state or success confirmation would help new users trust their SDK calls worked.
+
+**Experiment results may not be immediately visible in the UI**
+After a completed evaluation run, navigating to the experiment page before it fully syncs shows missing scores. Refreshing resolves it, but there's no loading indicator — a new user might assume the evaluator failed rather than that the UI hasn't caught up yet.
+
+## Workflow / Process Pitfalls
+
+**Experiment mislabeling is easy when agent code and eval code live separately**
+v2 was labeled as the improved-prompt run but actually executed the original v1 prompt — `generate_answer` in `evaluate.py` hadn't been updated to match `agent.py`. The scores looked like a slight regression when they were actually just v1 running again under a different name. LangSmith has no way to detect this; keeping agent logic in a shared module imported by both files would prevent the drift.
 
 ## Evaluation Findings
 
@@ -35,11 +46,17 @@ In v2, the "How do I contact support?" response still generated placeholder deta
 **A single helpfulness metric can mask regressions**
 v2's average helpfulness score dropped slightly (0.75 → 0.70) after the system prompt improvement — counterintuitive, until you realize the more cautious prompt made answers less direct, which the judge penalized, even though the answers were more accurate.
 
-**Experiment mislabeling is easy when agent code and eval code live separately**
-v2 was labeled as the improved-prompt run but actually executed the original v1 prompt — the generate_answer function in evaluate.py hadn't been updated to match agent.py. The scores looked like a slight regression when they were actually just v1 running again under a different name. LangSmith has no way to detect this; keeping agent logic in a shared module imported by both files would prevent the drift.
-
 **v3 revealed a real helpfulness/factuality tradeoff**
-Helpfulness dropped further, from 0.75 (v1) to 0.5 (v3), after adding the anti-hallucination guardrails — more cautious, more accurate, but less direct, and penalized accordingly by the helpfulness judge. Factuality averaged 0.8. A user seeing only the helpfulness regression would likely revert the change without realizing it improved accuracy. This is the core case for using multiple evaluators across different dimensions rather than one composite score.
+Helpfulness dropped from 0.75 (v1) to 0.5 (v3) after adding anti-hallucination guardrails — more cautious, more accurate, but less direct, and penalized accordingly by the helpfulness judge. Factuality averaged 0.8. A user seeing only the helpfulness regression would likely revert the change without realizing it improved accuracy. This is the core case for using multiple evaluators across different dimensions rather than one composite score.
 
 **Silent null-score failures aren't surfaced anywhere**
 The `evaluate()` SDK returns a CSV but shows no warning in the UI when a judge response fails to parse. "Why is my payment failing?" consistently returned null scores across both v2 and v3 — the judge's response failed to parse every time, silently falling back to 0.5, except that default wasn't even recorded in the CSV, leaving a genuine gap in the results. New users have no way to know an evaluator silently failed on one of six examples short of digging through raw CSV or console logs. This should surface as a visible warning in the experiment view.
+
+**LLM-as-a-judge scores show meaningful variance across identical runs**
+Running the same experiment twice with the same agent and same questions produced different scores on multiple questions — with no change to the agent or dataset. Individual experiment runs aren't reliable in isolation. Multiple repetitions and averaged scores are needed for any meaningful signal, especially when differences between experiments are small.
+
+**A binary/sparse rubric anchors the judge to a narrow set of values**
+With only three scoring bands described (0.0, 0.5, 1.0), the judge almost exclusively returned those three values across v1–v3, making it impossible to detect meaningful improvement between experiments. Expanding to five bands (0.0, 0.25, 0.5, 0.75, 1.0) in v4 immediately produced more granular scores — 0.75 appeared across multiple questions — and revealed the judge scoring more critically on factuality overall. Rubric granularity has a direct and significant effect on evaluation signal quality.
+
+**Granular rubrics can shift factuality scores unexpectedly**
+Moving from a 3-band to a 5-band factuality rubric caused the average factuality score to drop from 0.92 (v3) to 0.67 (v4), not because the agent got worse but because the judge now had intermediate options to use. Answers previously passing at 1.0 were re-scored at 0.5 under more scrutiny. This is expected behavior but could alarm a new user who assumes the agent regressed — rubric changes should be treated as a versioning event, not a drop-in replacement.

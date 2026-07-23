@@ -72,8 +72,10 @@ Expected theme: {reference_outputs["expected"]}
 Actual answer: {outputs["answer"]}
 
 Rate the answer on helpfulness from 0 to 1:
-- 1.0: Fully helpful, addresses the question completely
-- 0.5: Partially helpful, addresses some aspects  
+- 1.0: Fully helpful, directly addresses the question with clear actionable steps
+- 0.75: Mostly helpful, addresses the main question but misses some aspects
+- 0.5: Partially helpful, addresses some aspects but leaves key questions unanswered
+- 0.25: Minimally helpful, tangentially related but doesn't address the question
 - 0.0: Not helpful, misses the point entirely
 
 Respond with ONLY a number between 0 and 1. Nothing else."""
@@ -118,9 +120,11 @@ Check if the response contains any of the following:
 - Any text in brackets suggesting placeholder content (e.g. [company name])
 
 Score from 0 to 1:
-- 1.0: No fabricated or placeholder information
-- 0.5: Minor placeholder content that doesn't mislead
-- 0.0: Contains fabricated specifics presented as real information
+- 1.0: No fabricated information, all specific claims are accurate or appropriately deferred
+- 0.75: Minor uncertainty but no clear fabrication
+- 0.5: Contains some placeholder or uncertain content that could mislead
+- 0.25: Contains likely fabricated specifics
+- 0.0: Contains clearly fabricated specifics presented as real information
 
 Respond with ONLY a number between 0 and 1. Nothing else."""
     # Concrete checklist of hallucination patterns (placeholder emails/phones/URLs, made-up pricing,
@@ -146,7 +150,7 @@ results = evaluate(
     run_agent,
     data="Customer Support QA",
     evaluators=[helpfulness_evaluator, factuality_evaluator],
-    experiment_prefix="support-bot-v3-dual-eval"
+    experiment_prefix="support-bot-v4-granular-eval"
     # Label distinguishing this run — now accurately reflects both the updated guardrail prompt
     # AND the dual-metric (helpfulness + factuality) evaluation setup
 )
