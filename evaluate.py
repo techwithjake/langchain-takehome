@@ -3,6 +3,8 @@ from langsmith import evaluate                  # Import LangSmith's evaluate() 
 from langchain_groq import ChatGroq             # Groq's chat model wrapper for LangChain
 from langgraph.graph import StateGraph, END     # StateGraph builds the workflow; END marks a terminal node
 from typing import TypedDict                    # For defining a typed dict schema for the graph's state
+from langchain_core.messages import SystemMessage, HumanMessage
+# SystemMessage sets persistent behavioral instructions; HumanMessage wraps the actual per-request input
 
 load_dotenv()  # Load environment variables (e.g. GROQ_API_KEY, LANGCHAIN_API_KEY) from a .env file
 
@@ -17,9 +19,22 @@ def receive_question(state: State) -> State:
     return state  # No-op node: just passes state through (logging removed vs. agent.py, since this runs in an eval loop)
 
 def generate_answer(state: State) -> State:
-    response = llm.invoke(f"You are a helpful customer support agent. Answer this question: {state['question']}")
+    messages = [
+        SystemMessage(content="""You are a helpful customer support agent. 
+            Answer customer questions clearly and concisely.
+
+            Important: If you don't have specific company information such as contact 
+            details, pricing, or account-specific data, say so honestly rather than 
+            making up placeholder information. Direct the customer to find that 
+            information on the company's official website or documentation."""),
+        # Guardrail instruction: explicitly tells the model to admit uncertainty rather than
+        # fabricate contact info/pricing/account details — this is the change v2/v3 are testing
+        HumanMessage(content=state["question"])
+        # The actual customer question, kept separate from the system instructions
+    ]
+    response = llm.invoke(messages)  # Call the LLM with the structured message list
     return {"question": state["question"], "answer": response.content}
-    # Calls the LLM and returns a new state dict with the generated answer added
+    # Return updated state with the generated answer added
 
 def output_answer(state: State) -> State:
     return state  # No-op node: just passes state through unchanged
@@ -45,6 +60,7 @@ def run_agent(inputs: dict) -> dict:
 judge = ChatGroq(model="llama-3.3-70b-versatile")
 # A separate, stronger model acts as the grader here (70B vs. the 8B agent), rather than reusing the
 # agent's own model — reduces the risk of the judge sharing the same blind spots/biases as what it's grading
+# Reused by both evaluators below
 
 def helpfulness_evaluator(inputs: dict, outputs: dict, reference_outputs: dict) -> dict:
     # LangSmith calls this once per example, passing: the original inputs, the agent's outputs
@@ -85,14 +101,56 @@ Respond with ONLY a number between 0 and 1. Nothing else."""
     # LangSmith expects evaluators to return a dict with "key" (metric name) and "score" (the value),
     # which is how it knows to log this as a "helpfulness" score in the experiment results
 
+def factuality_evaluator(inputs: dict, outputs: dict, reference_outputs: dict) -> dict:
+    # Second evaluator: same signature, grades a different dimension — whether the answer
+    # fabricates specifics rather than admitting it doesn't know
+    prompt = f"""You are evaluating whether a customer support response contains 
+fabricated or placeholder information.
+
+Question: {inputs["question"]}
+Response: {outputs["answer"]}
+
+Check if the response contains any of the following:
+- Placeholder email addresses (e.g. support@yourcompany.com, support@[domain].com)
+- Placeholder phone numbers (e.g. 1-800-SUPPORT, 1-800-[number])
+- Fabricated URLs or website addresses
+- Made-up pricing, dates, or account-specific details
+- Any text in brackets suggesting placeholder content (e.g. [company name])
+
+Score from 0 to 1:
+- 1.0: No fabricated or placeholder information
+- 0.5: Minor placeholder content that doesn't mislead
+- 0.0: Contains fabricated specifics presented as real information
+
+Respond with ONLY a number between 0 and 1. Nothing else."""
+    # Concrete checklist of hallucination patterns (placeholder emails/phones/URLs, made-up pricing,
+    # bracketed placeholders) — this is the metric that directly tests the guardrail's intended effect
+
+    response = judge.invoke(prompt)  # Reuses the same judge instance as helpfulness_evaluator
+    
+    try:
+        raw = response.content.strip()
+        cleaned = raw.split(":")[-1].split("/")[0].strip()
+        score = float(cleaned)
+        score = max(0.0, min(1.0, score))
+    except ValueError:
+        print(f"Warning: Could not parse factuality score from: '{response.content}' — defaulting to 0.5")
+        score = 0.5
+        # Same parsing/fallback pattern as helpfulness_evaluator
+    
+    return {"key": "factuality", "score": score}
+    # Logged as a separate "factuality" metric in LangSmith, alongside "helpfulness"
+
 # Run the evaluation against the dataset
 results = evaluate(
     run_agent,
     data="Customer Support QA",
-    evaluators=[helpfulness_evaluator],
-    experiment_prefix="support-bot-v2-improved-prompt"
+    evaluators=[helpfulness_evaluator, factuality_evaluator],
+    experiment_prefix="support-bot-v3-dual-eval"
+    # Label distinguishing this run — now accurately reflects both the updated guardrail prompt
+    # AND the dual-metric (helpfulness + factuality) evaluation setup
 )
-# Fetches all examples from the dataset, runs run_agent on each, scores each with helpfulness_evaluator,
+# Fetches all examples from the dataset, runs run_agent on each, scores each with both evaluators,
 # and logs everything as a named "experiment" in LangSmith for viewing/comparison
 
 print("\nEvaluation complete!")
