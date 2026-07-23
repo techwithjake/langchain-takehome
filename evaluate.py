@@ -150,7 +150,8 @@ results = evaluate(
     run_agent,
     data="Customer Support QA",
     evaluators=[helpfulness_evaluator, factuality_evaluator],
-    experiment_prefix="support-bot-v4-granular-eval"
+    num_repetitions=3,
+    experiment_prefix="support-bot-v5-repetitions"
     # Label distinguishing this run — now accurately reflects both the updated guardrail prompt
     # AND the dual-metric (helpfulness + factuality) evaluation setup
 )
