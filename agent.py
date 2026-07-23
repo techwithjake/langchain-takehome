@@ -2,6 +2,9 @@ from dotenv import load_dotenv          # Import function to read variables from
 from langchain_groq import ChatGroq     # Import Groq's chat model wrapper for LangChain
 from langgraph.graph import StateGraph, END  # StateGraph builds the workflow; END marks a terminal node
 from typing import TypedDict            # TypedDict lets us define a typed dict schema for the graph's state
+from langchain_core.messages import SystemMessage, HumanMessage
+# SystemMessage sets the model's role/behavior instructions; HumanMessage wraps the actual user input —
+# using these instead of an f-string gives a proper structured chat format instead of one flat prompt
 
 load_dotenv()  # Load environment variables (e.g. GROQ_API_KEY) from a .env file into the process environment
 
@@ -20,10 +23,21 @@ def receive_question(state: State) -> State:
 
 # Node 2: generate an answer
 def generate_answer(state: State) -> State:
-    response = llm.invoke(f"You are a helpful customer support agent. Answer this question: {state['question']}")
-    # Call the LLM with a prompt combining a role instruction and the user's question; returns a response object
-    return {"question": state["question"], "answer": response.content}
-    # Build a new state dict: keep the original question, add the LLM's text output as "answer"
+    messages = [
+    SystemMessage(content="""You are a helpful customer support agent. 
+    Answer customer questions clearly and concisely.
+
+    Important: If you don't have specific company information such as contact 
+    details, pricing, or account-specific data, say so honestly rather than 
+    making up placeholder information. Direct the customer to find that 
+    information on the company's official website or documentation."""),
+    # System instructions now explicitly guard against hallucinating specifics (contact info, pricing,
+    # account data) the model has no real access to — pushes it to defer to official sources instead
+        HumanMessage(content=state["question"])
+        # The actual customer question, passed as a separate message rather than embedded in the system prompt
+    ]
+    response = llm.invoke(messages)  # Call the LLM with the structured message list instead of a single string
+    return {"question": state["question"], "answer": response.content}  # return updated state
 
 # Node 3: output the answer
 def output_answer(state: State) -> State:
@@ -44,6 +58,6 @@ graph.add_edge("output", END)           # After "output" finishes, terminate the
 app = graph.compile()  # Compile the graph definition into a runnable object
 
 # Run it
-result = app.invoke({"question": "How do I contact support?", "answer": ""})
+result = app.invoke({"question": "How do I reset my password?", "answer": ""})
 # Execute the graph starting from this initial state; runs receive -> answer -> output in sequence
 print("\nFinal state:", result)  # Print the final state dict after the graph finishes running

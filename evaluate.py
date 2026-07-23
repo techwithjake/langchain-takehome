@@ -87,10 +87,10 @@ Respond with ONLY a number between 0 and 1. Nothing else."""
 
 # Run the evaluation against the dataset
 results = evaluate(
-    run_agent,                          # The function to test — called once per dataset example
-    data="Customer Support QA",         # Name of the LangSmith dataset to pull examples from
-    evaluators=[helpfulness_evaluator],  # List of grading functions to run on each result
-    experiment_prefix="support-bot-v1"   # Label prefix for this run, shown in the LangSmith UI to distinguish experiments
+    run_agent,
+    data="Customer Support QA",
+    evaluators=[helpfulness_evaluator],
+    experiment_prefix="support-bot-v2-improved-prompt"
 )
 # Fetches all examples from the dataset, runs run_agent on each, scores each with helpfulness_evaluator,
 # and logs everything as a named "experiment" in LangSmith for viewing/comparison
