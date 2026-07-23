@@ -12,3 +12,9 @@ The generic support bot generates placeholder contact information ("support@
 LangGraph's StateGraph requires defining a TypedDict for state before building the graph — this isn't immediately obvious from a first read of the docs. A new user expecting something closer to a simple function chain may be confused by why state needs to be explicitly typed and passed between nodes.
 
 The distinction between "Run in Playground", "Run in LangSmith Studio", and "Run in SDK" under the + Experiment button isn't clearly explained. It's not obvious what LangSmith Studio is or how it differs from Playground for a first-time user.
+
+LLM-as-a-judge with the same model family as the agent can miss hallucinations entirely. In v2, the "How do I contact support?" response still generated placeholder contact details (support@yourcompany.com, 1-800-SUPPORT) despite an explicit system prompt instruction not to. The judge scored it 1.0 anyway because the response structure was helpful. This means helpfulness alone is an insufficient metric for production support bots — a separate factuality or accuracy evaluator is needed to catch confident-sounding fabrications.
+
+A single generic helpfulness evaluator can mask regressions in specific failure modes. v2's average score dropped slightly from 0.75 to 0.70 after the system prompt improvement, which is counterintuitive. The more cautious prompt made some answers less direct, which the judge penalized on helpfulness — even though the answers were more accurate. This highlights the need for multiple evaluators measuring different dimensions (helpfulness, accuracy, conciseness) rather than a single composite score.
+
+The evaluate() SDK function returns a CSV but doesn't surface a null score warning in the UI when a judge response fails to parse. One of six runs returned no score silently — only visible by inspecting the CSV output or watching console logs. New users may not realize an evaluator is silently failing.
