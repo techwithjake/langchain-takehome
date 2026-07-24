@@ -34,14 +34,15 @@ between the agent and its evaluation.
 
 ## Evaluation
 
-The agent was evaluated against an 18-question dataset covering 6 scenario categories:
+The agent was evaluated against an 18-question dataset covering 7 scenario categories:
 
 - Standard support questions (password reset, login, cancellation, exports)
 - Edge cases — account-specific data the bot cannot access
 - Ambiguous inputs — questions requiring clarification
 - Out-of-scope requests
 - Compound questions
-- Escalation/frustration and security concerns
+- Escalation/frustration
+- Security concerns
 
 **Three evaluators, all LLM-as-a-judge using Llama 3.3 70b:**
 
@@ -49,15 +50,21 @@ The agent was evaluated against an 18-question dataset covering 6 scenario categ
 - **Factuality** — does it avoid fabricating placeholder information?
 - **Conciseness** — is it appropriately direct without unnecessary verbosity?
 
-Each example is run 3 times and scores are averaged to reduce judge variance.
+Each example is run 3 times (`num_repetitions=3`) and scores are averaged to reduce judge variance.
 
-**v8 results (final):**
+**Latest successful results — v7 (18-question dataset, helpfulness + factuality):**
 
 | Metric | Avg Score |
 |---|---|
-| Helpfulness | TBD |
-| Factuality | TBD |
-| Conciseness | TBD |
+| Helpfulness | 0.722 |
+| Factuality | 0.843 |
+
+**v8 results (final):**
+| Metric | Avg Score |
+|---|---|
+| Helpfulness | 0.74 |
+| Factuality | 0.837 |
+| Conciseness | 0.486 |
 
 **Experiment progression:**
 
@@ -76,11 +83,13 @@ Each example is run 3 times and scores are averaged to reduce judge variance.
 
 ## Project Structure
 
-support_agent.py # Shared LangGraph agent — imported by agent.py and evaluate.py
-agent.py # Run the agent manually against a single question
-evaluate.py # Run evaluation experiments against the full dataset
-create_dataset.py # Create the 18-question dataset in LangSmith
-friction_log # Observations from a new user's perspective
+```text
+support_agent.py    # Shared LangGraph agent — imported by agent.py and evaluate.py
+agent.py             # Run the agent manually against a single question
+evaluate.py          # Run evaluation experiments against the full dataset
+create_dataset.py    # Create the 18-question dataset in LangSmith
+friction_log         # Observations from a new user's perspective
+```
 
 ---
 
@@ -94,10 +103,12 @@ pip install -r requirements.txt
 
 Create a `.env` file:
 
+```text
 GROQ_API_KEY=your_key_here
 LANGSMITH_API_KEY=your_key_here
 LANGSMITH_TRACING=true
 LANGSMITH_PROJECT=your_project_name
+```
 
 ---
 

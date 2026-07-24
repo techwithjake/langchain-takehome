@@ -148,8 +148,8 @@ results = evaluate(
     # earlier, where identical runs on an unchanged agent produced meaningfully different scores.
     # A single run isn't reliable in isolation; repetitions give a more trustworthy signal.
     experiment_prefix="support-bot-v8-conciseness"
-    # Label documents *why* this run differs from prior ones (shared module + repetitions + 5-band
-    # rubric), not just a version bump — makes the experiment list in LangSmith self-explanatory later
+    # Label documents *why* this run differs from v7 — added a third evaluator (conciseness) — 
+    # not just a version bump, so the experiment list in LangSmith stays self-explanatory
 )
 # Fetches all examples from the dataset, runs run_agent on each (3x per example), scores each with
 # both evaluators, and logs everything as a named "experiment" in LangSmith for viewing/comparison
