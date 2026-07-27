@@ -52,13 +52,6 @@ The agent was evaluated against an 18-question dataset covering 7 scenario categ
 
 Each example is run 3 times (`num_repetitions=3`) and scores are averaged to reduce judge variance.
 
-**Latest successful results — v7 (18-question dataset, helpfulness + factuality):**
-
-| Metric | Avg Score |
-|---|---|
-| Helpfulness | 0.722 |
-| Factuality | 0.843 |
-
 **v8 results (final):**
 | Metric | Avg Score |
 |---|---|
@@ -78,6 +71,41 @@ Each example is run 3 times (`num_repetitions=3`) and scores are averaged to red
 | v6 | Refactored to shared agent module |
 | v7 | Expanded dataset from 6 to 18 questions |
 | v8 | Added conciseness evaluator |
+
+---
+
+## Example Outputs
+
+Two real responses that illustrate the key evaluation findings:
+
+**Conciseness weakness — bot can't actually process what it's asking for:**
+
+> Q: "Can you process a refund for my last payment?"
+>
+> A: "I'd be happy to help with your refund request. However, I need some more 
+> information from you... [asks for order number, amount, full or partial refund]"
+
+The bot asks for information it can never use — it has no ability to process 
+transactions. A correct response is a two-sentence redirect to the billing team. 
+This response scored 0.333 on conciseness and is a direct target for the next 
+prompt iteration.
+
+---
+
+**Guardrail partially effective — placeholder pattern persists in a new form:**
+
+> Q: "How do I contact support?"
+>
+> A: "Visit our company website at [insert company website URL]..."
+
+The anti-hallucination guardrail prevented the bot from fabricating a specific 
+email or phone number — a real improvement over v1, where this same question 
+produced fake contact details scored as fully helpful by the judge. But the 
+bracketed placeholder URL here still trips the factuality evaluator's own 
+checklist (bracketed placeholder content, fabricated URL) — the guardrail 
+reduced the failure mode, it didn't eliminate it. The real fix isn't a better 
+prompt; it's RAG, so the bot can reference an actual URL instead of admitting 
+or guessing at one.
 
 ---
 
