@@ -59,6 +59,14 @@ Each example is run 3 times (`num_repetitions=3`) and scores are averaged to red
 | Factuality | 0.837 |
 | Conciseness | 0.486 |
 
+**UI experiment results (Customer Support QA - Small, 5 questions, 3 runs):**
+
+| Metric | Avg Score |
+|---|---|
+| Helpfulness | 0.776 |
+| Factuality | 0.909 |
+| Conciseness | 0.385 |
+
 **Experiment progression:**
 
 | Version | Key change |
@@ -116,7 +124,8 @@ support_agent.py    # Shared LangGraph agent — imported by agent.py and evalua
 agent.py             # Run the agent manually against a single question
 evaluate.py          # Run evaluation experiments against the full dataset
 create_dataset.py    # Create the 18-question dataset in LangSmith
-friction_log         # Observations from a new user's perspective
+friction_log.md       # Observations from a new user's perspective
+requirements.txt      # Pinned dependencies
 ```
 
 ---
