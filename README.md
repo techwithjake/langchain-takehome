@@ -124,6 +124,7 @@ support_agent.py    # Shared LangGraph agent — imported by agent.py and evalua
 agent.py             # Run the agent manually against a single question
 evaluate.py          # Run evaluation experiments against the full dataset
 create_dataset.py    # Create the 18-question dataset in LangSmith
+create_small_dataset.py  # Create the 5-question subset for UI Playground evaluation
 friction_log.md       # Observations from a new user's perspective
 requirements.txt      # Pinned dependencies
 ```
